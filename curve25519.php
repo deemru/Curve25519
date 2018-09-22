@@ -365,6 +365,25 @@ function curve25519_to_ed25519( $pk )
     return $z;
 }
 
+function cache( $key, $edpk = false )
+{
+    static $cache = [];
+
+    if( $edpk !== false )
+    {
+        if( count( $cache ) >= 1024 )
+            $cache = [];
+
+        $cache[$key] = $edpk;
+        return;
+    }
+
+    if( isset( $cache[$key] ) )
+        return $cache[$key];
+
+    return false;
+}
+
 function curve25519_sign( $msg, $key )
 {
     if( strlen( $key ) !== 32 )
@@ -378,11 +397,17 @@ function curve25519_sign( $msg, $key )
     $edsk[31] &= 127;
     $edsk[31] |= 64;
 
-    $p = [ gf(), gf(), gf(), gf() ];
-    scalarbase( $p, $edsk );
-    $edsk32 = array_fill( 0, 32, 0 );
-    pack( $edsk32, $p );
-    $edsk = array_merge( $edsk, $edsk32 );
+    $edpk = cache( $key );
+    if( $edpk === false )
+    {
+        $p = [ gf(), gf(), gf(), gf() ];
+        scalarbase( $p, $edsk );
+        $edpk = array_fill( 0, 32, 0 );
+        pack( $edpk, $p );
+        cache( $key, $edpk );
+    }
+
+    $edsk = array_merge( $edsk, $edpk );
 
     $signBit = $edsk[63] & 128;
     $sm = sign_direct( $msg, $edsk, random_bytes( 64 ) );
@@ -400,11 +425,17 @@ function curve25519_verify( $signature, $msg, $key )
     if( strlen( $key ) !== 32 || strlen( $signature ) !== 64 )
         return false;
 
-    $pk = [];
-    for( $i = 0; $i < 32; $i++ )
-        $pk[] = ord( $key[$i] );
+    $edpk = cache( $key );
+    if( $edpk === false )
+    {
+        $pk = [];
+        for( $i = 0; $i < 32; $i++ )
+            $pk[] = ord( $key[$i] );
 
-    $edpk = curve25519_to_ed25519( $pk );
+        $edpk = curve25519_to_ed25519( $pk );
+        cache( $key, $edpk );
+    }
+
     $edpk[31] |= ord( $signature[63] ) & 128;
     $signature[63] = chr( ord( $signature[63] ) & 127 );
 
