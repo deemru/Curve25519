@@ -42,7 +42,7 @@ function sel25519( &$p, &$q, $b )
     }
 }
 
-function pack25519( &$o, $n )
+function pack25519( $n )
 {
     $m = gf();
     $t = gf();
@@ -70,18 +70,19 @@ function pack25519( &$o, $n )
         sel25519( $t, $m, 1 - $b );
     }
 
+    $o = [];
     for( $i = 0; $i < 16; $i++ )
     {
-        $o[2 * $i] = $t[$i] & 0xFF;
-        $o[2 * $i + 1] = $t[$i] >> 8;
+        $o[] = $t[$i] & 0xFF;
+        $o[] = $t[$i] >> 8;
     }
+
+    return $o;
 }
 
 function par25519( $a )
 {
-    $d = array_fill( 0, 32, 0 );
-    pack25519( $d, $a );
-    return $d[0] & 1;
+    return pack25519( $a )[0] & 1;
 }
 
 function unpack25519( &$o, $n )
@@ -185,7 +186,7 @@ function cswap( &$p, &$q, $b )
         sel25519( $p[$i], $q[$i], $b );
 }
 
-function pack( &$r, $p )
+function pack( $p )
 {
     $tx = gf();
     $ty = gf();
@@ -194,16 +195,14 @@ function pack( &$r, $p )
     inv25519( $zi, $p[2] );
     M( $tx, $p[0], $zi );
     M( $ty, $p[1], $zi );
-    pack25519( $r, $ty );
+    $r = pack25519( $ty );
     $r[31] ^= par25519( $tx ) << 7;
+    return $r;
 }
 
-function scalarmult( &$p, &$q, $s )
+function scalarmult( $q, $s )
 {
-    $p[0] = gf();
-    $p[1] = gf( [ 1 ] );
-    $p[2] = gf( [ 1 ] );
-    $p[3] = gf();
+    $p = [ gf(), gf( [ 1 ] ), gf( [ 1 ] ), gf() ];
 
     for( $i = 255; $i >= 0; $i-- )
     {
@@ -213,9 +212,11 @@ function scalarmult( &$p, &$q, $s )
         add( $p, $p );
         cswap( $p, $q, $b );
     }
+
+    return $p;
 }
 
-function scalarbase( &$p, $s )
+function scalarbase( $s )
 {
     $X = gf( [ 0xD51A, 0x8F25, 0x2D60, 0xC956, 0xA7B2, 0x9525, 0xC760, 0x692C, 0xDC5C, 0xFDD6, 0xE231, 0xC0A4, 0x53FE, 0xCD6E, 0x36D3, 0x2169 ] );
     $Y = gf( [ 0x6658, 0x6666, 0x6666, 0x6666, 0x6666, 0x6666, 0x6666, 0x6666, 0x6666, 0x6666, 0x6666, 0x6666, 0x6666, 0x6666, 0x6666, 0x6666 ] );
@@ -227,10 +228,10 @@ function scalarbase( &$p, $s )
     $q[3] = [];
     M( $q[3], $X, $Y );
 
-    scalarmult( $p, $q, $s );
+    return scalarmult( $q, $s );
 }
 
-function modL( &$r, &$x )
+function modL( $x )
 {
     $L = array_merge( [ 0xED, 0xD3, 0xF5, 0x5C, 0x1A, 0x63, 0x12, 0x58, 0xD6, 0x9C, 0xF7, 0xA2, 0xDE, 0xF9, 0xDE, 0x14, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x10 ], array_fill( 0, 32, 0 ) );
 
@@ -261,94 +262,59 @@ function modL( &$r, &$x )
     for( $j = 0; $j < 32; $j++ )
         $x[$j] -= $carry * $L[$j];
 
+    $r = [];
     for( $i = 0; $i < 32; $i++ )
     {
         $x[$i+1] += $x[$i] >> 8;
-        $r[$i] = $x[$i] & 255;
+        $r[] = $x[$i] & 255;
     }
+
+    return $r;
 }
 
-function reduce( &$r )
+function sha512( $data )
 {
-    $x = array_fill( 0, 64, 0 );
-
-    for( $i = 0; $i < 64; $i++ )
-        $x[$i] = $r[$i];
-
-    for( $i = 0; $i < 64; $i++ )
-        $r[$i] = 0;
-
-    modL( $r, $x );
-}
-
-function sha512( $data, $len )
-{
-    $raw = '';
-    for( $i = 0; $i < $len; $i++ )
-        $raw .= chr( $data[$i] );
-
-    $raw = hash( 'sha512', $raw, true );
+    $data = hash( 'sha512', $data, true );
 
     $hash = [];
     for( $i = 0; $i < 64; $i++ )
-        $hash[] = ord( $raw[$i] );
+        $hash[] = ord( $data[$i] );
 
     return $hash;
 }
 
-function sign_direct( $msg, $sk, $rnd )
+function sign_direct( $msg, $key, $sk, $rseed )
 {
-    $n = strlen( $msg );
-    $sm = array_fill( 0, $n + 128, 0 );
+    if( isset( $rseed ) )
+        $rseed = str_pad( chr( 254 ), 32, chr( 255 ) ) . $key . $rseed;
+    else
+        $rseed = str_pad( chr( 254 ), 32, chr( 255 ) ) . $key . $msg . random_bytes( 64 );
 
-    $sm[0] = 0xFE;
-    for( $i = 1; $i < 32; $i++ )
-        $sm[$i] = 0xFF;
+    $r = modL( sha512( $rseed ) );
+    $R = pack( scalarbase( $r ) );
 
+    $S = array_fill( 0, 32, 0 );
+    if( isset( $rseed ) && !isset( $msg ) )
+        return array_merge( $R, $S );
+
+    $rseed = '';
     for( $i = 0; $i < 32; $i++ )
-        $sm[32 + $i] = $sk[$i];
-
-    for( $i = 0; $i < $n; $i++ )
-        $sm[64 + $i] = ord( $msg[$i] );
-
-    for( $i = 0; $i < 64; $i++ )
-        $sm[$n + 64 + $i] = ord( $rnd[$i] );
-
-    $r = sha512( $sm, $n + 128 );
-    reduce( $r );
-    $p = [ gf(), gf(), gf(), gf() ];
-    scalarbase( $p, $r );
-    pack( $sm, $p );
-
+        $rseed .= chr( $R[$i] );
     for( $i = 0; $i < 32; $i++ )
-        $sm[$i + 32] = $sk[32 + $i];
+        $rseed .= chr( $sk[32 + $i] );
+    $h = modL( sha512( $rseed . $msg ) );
 
-    $h = sha512( $sm, $n + 64 );
-    reduce( $h );
-
-    for( $i = 0; $i < 64; $i++ )
-        $sm[$n + 64 + $i] = 0;
-
-    $x = [];
-    for( $i = 0; $i < 32; $i++ )
-        $x[] = $r[$i];
-
-    for( $i = 32; $i < 64; $i++ )
-        $x[] = 0;
-
+    $x = array_merge( $r, array_fill( 0, 32, 0 ) );
     for( $i = 0; $i < 32; $i++ )
         for( $j = 0; $j < 32; $j++ )
             $x[$i + $j] += $h[$i] * $sk[$j];
+    $S = modL( $x );
 
-    $sm32 = array_fill( 0, 32, 0 );
-    modL( $sm32, $x );
-
-    return array_merge( array_slice( $sm, 0, 32 ), $sm32 );
+    return array_merge( $R, $S );
 }
 
 function curve25519_to_ed25519( $pk )
 {
-    $z = array_fill( 0, 32, 0 );
     $x = gf();
     $a = gf();
     $b = gf();
@@ -361,32 +327,34 @@ function curve25519_to_ed25519( $pk )
     inv25519( $a, $a );
     M( $a, $a, $b );
 
-    pack25519( $z, $a );
-    return $z;
+    return pack25519( $a );
 }
 
-function cache( $key, $edpk = false )
+function cache( $key, $edpk = null )
 {
     static $cache = [];
 
-    if( $edpk !== false )
+    if( isset( $edpk ) )
     {
         if( count( $cache ) >= 1024 )
             $cache = [];
 
         $cache[$key] = $edpk;
-        return;
+        return $edpk;
     }
 
     if( isset( $cache[$key] ) )
         return $cache[$key];
 
-    return false;
+    return null;
 }
 
-function curve25519_sign( $msg, $key )
+function curve25519_sign( $msg, $key, $rseed = null )
 {
     if( strlen( $key ) !== 32 )
+        return false;
+
+    if( isset( $rseed ) && strlen( $rseed ) !== 64 )
         return false;
 
     $edsk = [];
@@ -398,19 +366,13 @@ function curve25519_sign( $msg, $key )
     $edsk[31] |= 64;
 
     $edpk = cache( $key );
-    if( $edpk === false )
-    {
-        $p = [ gf(), gf(), gf(), gf() ];
-        scalarbase( $p, $edsk );
-        $edpk = array_fill( 0, 32, 0 );
-        pack( $edpk, $p );
-        cache( $key, $edpk );
-    }
+    if( !isset( $edpk ) )
+        $edpk = cache( $key, pack( scalarbase( $edsk ) ) );
 
     $edsk = array_merge( $edsk, $edpk );
 
     $signBit = $edsk[63] & 128;
-    $sm = sign_direct( $msg, $edsk, random_bytes( 64 ) );
+    $sm = sign_direct( $msg, $key, $edsk, $rseed );
     $sm[63] |= $signBit;
 
     $signature = '';
@@ -426,14 +388,13 @@ function curve25519_verify( $signature, $msg, $key )
         return false;
 
     $edpk = cache( $key );
-    if( $edpk === false )
+    if( !isset( $edpk ) )
     {
         $pk = [];
         for( $i = 0; $i < 32; $i++ )
             $pk[] = ord( $key[$i] );
 
-        $edpk = curve25519_to_ed25519( $pk );
-        cache( $key, $edpk );
+        $edpk = cache( $key, curve25519_to_ed25519( $pk ) );
     }
 
     $edpk[31] |= ord( $signature[63] ) & 128;
