@@ -286,7 +286,7 @@ function sha512( $data )
 function sign_direct( $msg, $key, $sk, $rseed )
 {
     if( isset( $rseed ) )
-        $rseed = str_pad( chr( 254 ), 32, chr( 255 ) ) . $key . $rseed;
+        $rseed = str_pad( chr( 254 ), 32, chr( 255 ) ) . $key . hash( 'sha512', $rseed, true );
     else
         $rseed = str_pad( chr( 254 ), 32, chr( 255 ) ) . $key . $msg . random_bytes( 64 );
 
@@ -352,9 +352,6 @@ function cache( $key, $edpk = null )
 function curve25519_sign( $msg, $key, $rseed = null )
 {
     if( strlen( $key ) !== 32 )
-        return false;
-
-    if( isset( $rseed ) && strlen( $rseed ) !== 64 )
         return false;
 
     $edsk = [];
