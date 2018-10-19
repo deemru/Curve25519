@@ -274,35 +274,45 @@ function modL( $x )
 
 function sha512( $data )
 {
-    $data = hash( 'sha512', $data, true );
-
-    $hash = [];
-    for( $i = 0; $i < 64; $i++ )
-        $hash[] = ord( $data[$i] );
-
-    return $hash;
+    return hash( 'sha512', $data, true );
 }
 
-function sign_direct( $msg, $key, $sk, $rseed )
+function to_ord( $a, $n )
+{
+    $ord = [];
+    for( $i = 0; $i < $n; $i++ )
+        $ord[] = ord( $a[$i] );
+
+    return $ord;
+}
+
+function to_chr( $a, $n )
+{
+    $chr = '';
+    for( $i = 0; $i < $n; $i++ )
+        $chr .= chr( $a[$i] );
+
+    return $chr;
+}
+
+function sign_php( $msg, $key, $sk, $rseed )
 {
     if( isset( $rseed ) )
-        $rseed = str_pad( chr( 254 ), 32, chr( 255 ) ) . $key . hash( 'sha512', $rseed, true );
+        $rseed = str_pad( chr( 254 ), 32, chr( 255 ) ) . $key . sha512( $rseed );
     else
         $rseed = str_pad( chr( 254 ), 32, chr( 255 ) ) . $key . $msg . random_bytes( 64 );
 
-    $r = modL( sha512( $rseed ) );
+    $r = modL( to_ord( sha512( $rseed ), 64 ) );
     $R = pack( scalarbase( $r ) );
 
     $S = array_fill( 0, 32, 0 );
     if( isset( $rseed ) && !isset( $msg ) )
         return array_merge( $R, $S );
 
-    $rseed = '';
-    for( $i = 0; $i < 32; $i++ )
-        $rseed .= chr( $R[$i] );
+    $rseed = to_chr( $R, 32 );
     for( $i = 0; $i < 32; $i++ )
         $rseed .= chr( $sk[32 + $i] );
-    $h = modL( sha512( $rseed . $msg ) );
+    $h = modL( to_ord( sha512( $rseed . $msg ), 64 ) );
 
     $x = array_merge( $r, array_fill( 0, 32, 0 ) );
     for( $i = 0; $i < 32; $i++ )
@@ -325,6 +335,23 @@ function curve25519_to_ed25519( $pk )
     A( $a, $x, $gf1 );
     Z( $b, $x, $gf1 );
     inv25519( $a, $a );
+    M( $a, $a, $b );
+
+    return pack25519( $a );
+}
+
+function ed25519_to_curve25519( $pk )
+{
+    $x = gf();
+    $a = gf();
+    $b = gf();
+    $gf1 = gf( [ 1 ] );
+
+    unpack25519( $x, $pk );
+
+    A( $a, $gf1, $x );
+    Z( $b, $gf1, $x );
+    inv25519( $b, $b );
     M( $a, $a, $b );
 
     return pack25519( $a );
@@ -354,52 +381,60 @@ function curve25519_sign( $msg, $key, $rseed = null )
     if( strlen( $key ) !== 32 )
         return false;
 
-    $edsk = [];
-    for( $i = 0; $i < 32; $i++ )
-        $edsk[] = ord( $key[$i] );
-
-    $edsk[0] &= 248;
-    $edsk[31] &= 127;
-    $edsk[31] |= 64;
-
-    $edpk = cache( $key );
-    if( !isset( $edpk ) )
-        $edpk = cache( $key, pack( scalarbase( $edsk ) ) );
-
-    $edsk = array_merge( $edsk, $edpk );
-
-    $signBit = $edsk[63] & 128;
-    $sm = sign_direct( $msg, $key, $edsk, $rseed );
-    $sm[63] |= $signBit;
-
-    $signature = '';
-    for( $i = 0; $i < 64; $i++ )
-        $signature .= chr( $sm[$i] );
-
-    return $signature;
-};
-
-function curve25519_verify( $signature, $msg, $key )
-{
-    if( strlen( $key ) !== 32 || strlen( $signature ) !== 64 )
-        return false;
-
-    $edpk = cache( $key );
-    if( !isset( $edpk ) )
+    $keypair = cache( 's' . $key );
+    if( !isset( $keypair ) )
     {
-        $pk = [];
-        for( $i = 0; $i < 32; $i++ )
-            $pk[] = ord( $key[$i] );
+        $edsk = to_ord( $key, 32 );
+        $edsk[0] &= 248;
+        $edsk[31] &= 127;
+        $edsk[31] |= 64;
 
-        $edpk = cache( $key, curve25519_to_ed25519( $pk ) );
+        $edpk = pack( scalarbase( $edsk ) );
+        $keypair = cache( 's' . $key, array_merge( $edsk, $edpk ) );
     }
 
-    $edpk[31] |= ord( $signature[63] ) & 128;
-    $signature[63] = chr( ord( $signature[63] ) & 127 );
+    $bit = $keypair[63] & 128;
+    $sig = sign_php( $msg, $key, $keypair, $rseed );
+    $sig[63] |= $bit;
 
-    $key = '';
-    for( $i = 0; $i < 32; $i++ )
-        $key .= chr( $edpk[$i] );
+    return to_chr( $sig, 64 );
+};
 
-    return sodium_crypto_sign_verify_detached( $signature, $msg, $key );
+function curve25519_sign_sodium( $msg, $key )
+{
+    if( strlen( $key ) !== 32 )
+        return false;
+
+    $keypair = cache( 'k' . $key );
+    if( !isset( $keypair ) )
+    {
+        $edsk = to_ord( sha512( $key ), 32 );
+        $edsk[0] &= 248;
+        $edsk[31] &= 127;
+        $edsk[31] |= 64;
+
+        $edpk = pack( scalarbase( $edsk ) );
+        $keypair = cache( 'k' . $key, $key . to_chr( $edpk, 32 ) );
+    }
+
+    $bit = ord( $keypair[63] ) & 128;
+    $sig = sodium_crypto_sign_detached( $msg, $keypair );
+    $sig[63] = chr( ord( $sig[63] ) | $bit );
+
+    return $sig;
+};
+
+function curve25519_verify( $sig, $msg, $key )
+{
+    if( strlen( $key ) !== 32 || strlen( $sig ) !== 64 )
+        return false;
+
+    $pk = cache( 'p' . $key );
+    if( !isset( $pk ) )
+        $pk = cache( 'p' . $key, to_chr( curve25519_to_ed25519( to_ord( $key, 32 ) ), 32 ) );
+
+    $pk[31] = chr( ord( $pk[31] ) | ( ord( $sig[63] ) & 128 ) );
+    $sig[63] = chr( ord( $sig[63] ) & 127 );
+
+    return sodium_crypto_sign_verify_detached( $sig, $msg, $pk );
 };
