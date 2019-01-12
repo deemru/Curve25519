@@ -1,6 +1,6 @@
 <?php
 
-namespace curve25519;
+namespace deemru;
 
 function gf( $init = false )
 {

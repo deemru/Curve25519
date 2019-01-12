@@ -1,0 +1,21 @@
+{
+    "name": "deemru/curve25519",
+    "description": "Curve25519 sign/verify for PHP",
+    "keywords": [ "wavesplatform" ],
+    "homepage": "https://github.com/deemru/curve25519-php",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Dmitrii Pichulin",
+            "email": "deem@deem.ru"
+        }
+    ],
+    "require": {
+        "php": "^7.2",
+        "ext-sodium": "*"
+    },
+    "autoload": {
+        "psr-4": { "deemru\\": "" }
+    }
+}
