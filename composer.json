@@ -1,7 +1,7 @@
 {
     "name": "deemru/curve25519",
     "description": "Curve25519 sign/verify",
-    "keywords": [ "wavesplatform" ],
+    "keywords": [ "wavesplatform", "curve25519", "sign", "verify" ],
     "homepage": "https://github.com/deemru/Curve25519",
     "type": "library",
     "license": "MIT",
@@ -15,7 +15,15 @@
         "php": ">=7.2",
         "ext-sodium": "*"
     },
+    "require-dev": {
+        "deemru/abcode": "1.0.*"
+    },
     "autoload": {
-        "psr-4": { "deemru\\": "" }
+        "psr-4": { "deemru\\": "src/" }
+    },
+    "scripts": {
+        "test": [
+            "@php test/selftest.php"
+        ]
     }
 }
