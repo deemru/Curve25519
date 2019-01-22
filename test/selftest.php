@@ -18,15 +18,6 @@ $verify = $curve25519->verify( $sig, $msg, $publicKey );
 if( !$verify )
     exit( 1 );
 
-function ms( $ms )
-{
-    if( $ms > 100 )
-        return round( $ms );
-    else if( $ms > 10 )
-        return sprintf( '%.01f', $ms );
-    return sprintf( '%.02f', $ms );
-}
-
 class tester
 {
     private $successful = 0;
