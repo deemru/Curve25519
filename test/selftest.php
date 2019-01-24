@@ -22,28 +22,32 @@ class tester
 {
     private $successful = 0;
     private $failed = 0;
+    private $depth = 0;
+    private $info = [];
+    private $start = [];
 
     public function pretest( $info )
     {
-        $this->info = $info;
-        $this->start = microtime( true );
+        $this->info[$this->depth] = $info;
+        $this->start[$this->depth] = microtime( true );
         if( !isset( $this->init ) )
-            $this->init = $this->start;
+            $this->init = $this->start[$this->depth];
+        $this->depth++;
     }
 
-    private function ms( &$start )
+    private function ms( $start )
     {
         $ms = ( microtime( true ) - $start ) * 1000;
         $ms = $ms > 100 ? round( $ms ) : $ms;
         $ms = sprintf( $ms > 10 ? ( $ms > 100 ? '%.00f' : '%.01f' ) : '%.02f', $ms );
-        $start = 0;
         return $ms;
     }
 
     public function test( $cond )
     {
-        $ms = $this->ms( $this->start );
-        echo ( $cond ? 'SUCCESS: ' : 'ERROR:   ' ) . "{$this->info} ($ms ms)\n";
+        $this->depth--;
+        $ms = $this->ms( $this->start[$this->depth] );
+        echo ( $cond ? 'SUCCESS: ' : 'ERROR:   ' ) . "{$this->info[$this->depth]} ($ms ms)\n";
         $cond ? $this->successful++ : $this->failed++;
     }
 
@@ -51,7 +55,7 @@ class tester
     {
         $total = $this->successful + $this->failed;
         $ms = $this->ms( $this->init );
-        echo "TOTAL:   {$this->successful}/$total ($ms ms)\n";
+        echo "  TOTAL: {$this->successful}/$total ($ms ms)\n";
         sleep( 3 );
 
         if( $this->failed > 0 )
@@ -59,7 +63,7 @@ class tester
     }
 }
 
-echo "TEST:    Curve25519\n";
+echo "   TEST: Curve25519\n";
 $t = new tester();
 
 // https://docs.wavesplatform.com/en/technical-details/cryptographic-practical-details.html
@@ -78,6 +82,49 @@ $t->pretest( 'verify (known)' );
     $msg = $base58->decode( 'Ht7FtLJBrnukwWtywum4o1PbQSNyDWMgb4nXR5ZkV78krj9qVt17jz74XYSrKSTQe6wXuPdt3aCvmnF5hfjhnd1gyij36hN1zSDaiDg3TFi7c7RbXTHDDUbRgGajXci8PJB3iJM1tZvh8AL5wD4o4DCo1VJoKk2PUWX3cUydB7brxWGUxC6mPxKMdXefXwHeB4khwugbvcsPgk8F6YB' );
     $sig = $base58->decode( '2mQvQFLQYJBe9ezj7YnAQFq7k9MxZstkrbcSKpLzv7vTxUfnbvWMUyyhJAc1u3vhkLqzQphKDecHcutUrhrHt22D' );
     $t->test( $curve25519->verify( $sig, $msg, $publicKey ) === true );
+}
+
+function flipsig_test( $t, $sig, $msg, $publicKey, $curve25519, $text )
+{
+    $t->pretest( $text );
+    $verify = false;
+    for( $i = 0; $i < 64; $i++ )
+    {
+        $c = ord( $sig[$i] );
+        for( $j = 0; $j < 8; $j++ )
+        {
+            $ctest = $c ^ ( 1 << $j );
+            $sig[$i] = chr( $ctest );
+            $verify = $verify || $curve25519->verify( $sig, $msg, $publicKey );
+        }
+        $sig[$i] = chr( $c );
+    }
+
+    $verify = $verify || !$curve25519->verify( $sig, $msg, $publicKey );
+    $t->test( false === $verify );
+}
+
+function flipkey_test( $t, $sig, $msg, $publicKey, $curve25519, $text )
+{
+    $t->pretest( $text );
+    $verify = false;
+    for( $i = 0; $i < 32; $i++ )
+    {
+        $c = ord( $publicKey[$i] );
+        for( $j = 0; $j < 8; $j++ )
+        {
+            $ctest = $c ^ ( 1 << $j );
+            $publicKey[$i] = chr( $ctest );
+            if( $i === 31 && $j === 7 )
+                $verify = $verify || !$curve25519->verify( $sig, $msg, $publicKey );
+            else
+                $verify = $verify || $curve25519->verify( $sig, $msg, $publicKey );
+        }
+        $publicKey[$i] = chr( $c );
+    }
+
+    $verify = $verify || !$curve25519->verify( $sig, $msg, $publicKey );
+    $t->test( false === $verify );
 }
 
 for( $i = 1; $i <= 3; $i++ )
@@ -153,17 +200,25 @@ for( $i = 1; microtime( true ) - $mt < 13.37; $i++ )
 
     $privateKey = random_bytes( 32 );
     $sodiumPrivateKey = $curve25519->getSodiumPrivateKeyFromPrivateKey( $privateKey );
-    $sodiumPublicKey = $curve25519->getSodiumPublicKeyFromPrivateKey( $privateKey );
+    $sodiumPublicKey = $curve25519->getSodiumPublicKeyFromPrivateKey( $privateKey, mt_rand( 0, 1 ) == 1 );
 
     $strlen = mt_rand( 0, 16 );
     $msg = $strlen ? random_bytes( $strlen ) : '';
 
     $sig = $curve25519->sign( $msg, $sodiumPrivateKey );
     $verify = $curve25519->verify( $sig, $msg, $sodiumPublicKey );
-    $sig = $curve25519->sign_sodium( $msg, $privateKey );
-    $verify = $curve25519->verify( $sig, $msg, $sodiumPublicKey ) && $verify;
+
+    $sigso = $curve25519->sign_sodium( $msg, $privateKey );
+    $verify = $curve25519->verify( $sigso, $msg, $sodiumPublicKey ) && $verify;
 
     $t->test( $verify );
+}
+
+{
+    flipsig_test( $t, $sig, $msg, $sodiumPublicKey, $curve25519, 'signature bits flip (php)' );
+    flipkey_test( $t, $sig, $msg, $sodiumPublicKey, $curve25519, 'publickey bits flip (php)' );
+    flipsig_test( $t, $sigso, $msg, $sodiumPublicKey, $curve25519, 'signature bits flip (sodium)' );
+    flipkey_test( $t, $sigso, $msg, $sodiumPublicKey, $curve25519, 'publickey bits flip (sodium)' );
 }
 
 $t->finish();
