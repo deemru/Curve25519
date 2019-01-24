@@ -148,12 +148,16 @@ class Curve25519
      * Gets a public key from a private key
      *
      * @param  string $key Private key
+     * @param  bool   $fliplastbit Optionally flip last bit
      *
      * @return string
      */
-    public function getPublicKeyFromPrivateKey( $key )
+    public function getPublicKeyFromPrivateKey( $key, $fliplastbit = false )
     {
-        return sodium_crypto_box_publickey_from_secretkey( $key );
+        $key = sodium_crypto_box_publickey_from_secretkey( $key );
+        if( $fliplastbit )
+            $key[31] = chr( ord( $key[31] ) ^ 128 );
+        return $key;
     }
 
     /**
@@ -172,11 +176,12 @@ class Curve25519
      * Gets a "sodium" public key from a private key
      *
      * @param  string $key Private key
+     * @param  bool   $fliplastbit Optionally flip last bit
      *
      * @return string
      */
-    public function getSodiumPublicKeyFromPrivateKey( $key )
+    public function getSodiumPublicKeyFromPrivateKey( $key, $fliplastbit = false )
     {
-        return self::getPublicKeyFromPrivateKey( self::getSodiumPrivateKeyFromPrivateKey( $key ) );
+        return self::getPublicKeyFromPrivateKey( self::getSodiumPrivateKeyFromPrivateKey( $key, $fliplastbit ) );
     }
 }
