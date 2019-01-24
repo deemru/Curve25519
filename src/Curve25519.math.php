@@ -2,8 +2,7 @@
 
 namespace deemru\curve25519;
 
-function gf(){  return [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]; }
-function gf1(){ return [ 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]; }
+// Based on: http://tweetnacl.cr.yp.to/20140427/tweetnacl.c
 
 function car25519( &$o )
 {
@@ -33,8 +32,8 @@ function sel25519( &$p, &$q, $b )
 
 function pack25519( $n )
 {
-    $m = gf();
-    $t = gf();
+    $m = [];
+    $t = [];
 
     for( $i = 0; $i < 16; $i++ )
         $t[$i] = $n[$i];
@@ -74,12 +73,14 @@ function par25519( $a )
     return pack25519( $a )[0] & 1;
 }
 
-function unpack25519( &$o, $n )
+function unpack25519( $n )
 {
+    $o = [];
     for( $i = 0; $i < 16; $i++ )
         $o[$i] = $n[2 * $i] + ( $n[2 * $i + 1] << 8 );
 
     $o[15] &= 0x7FFF;
+    return $o;
 }
 
 function A( &$o, $a, $b )
@@ -119,8 +120,7 @@ function S( &$o, $a )
 
 function inv25519( &$o, $i )
 {
-    $c = gf();
-
+    $c = [];
     for( $a = 0; $a < 16; $a++ )
         $c[$a] = $i[$a];
 
@@ -137,15 +137,15 @@ function inv25519( &$o, $i )
 
 function add( &$p, $q )
 {
-    $a = gf();
-    $b = gf();
-    $c = gf();
-    $d = gf();
-    $e = gf();
-    $f = gf();
-    $g = gf();
-    $h = gf();
-    $t = gf();
+    $a = [];
+    $b = [];
+    $c = [];
+    $d = [];
+    $e = [];
+    $f = [];
+    $g = [];
+    $h = [];
+    $t = [];
     static $D2 = [ 61785, 9906, 39828, 60374, 45398, 33411, 5274, 224, 53552, 61171, 33010, 6542, 64743, 22239, 55772, 9222 ];
 
     Z( $a, $p[1], $p[0] );
@@ -177,9 +177,9 @@ function cswap( &$p, &$q, $b )
 
 function pack( $p )
 {
-    $tx = gf();
-    $ty = gf();
-    $zi = gf();
+    $tx = [];
+    $ty = [];
+    $zi = [];
 
     inv25519( $zi, $p[2] );
     M( $tx, $p[0], $zi );
@@ -311,36 +311,28 @@ function sign_php( $msg, $key, $sk, $rseed )
     return array_merge( $R, $S );
 }
 
+function gf1(){ return [ 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]; }
+
 function curve25519_to_ed25519( $pk )
 {
-    $x = gf();
-    $a = gf();
-    $b = gf();
-    $gf1 = gf1();
-
-    unpack25519( $x, $pk );
-
-    A( $a, $x, $gf1 );
-    Z( $b, $x, $gf1 );
+    $a = [];
+    $b = [];
+    $x = unpack25519( $pk );
+    A( $a, $x, gf1() );
+    Z( $b, $x, gf1() );
     inv25519( $a, $a );
     M( $a, $a, $b );
-
     return pack25519( $a );
 }
 
 function ed25519_to_curve25519( $pk )
 {
-    $x = gf();
-    $a = gf();
-    $b = gf();
-    $gf1 = gf1();
-
-    unpack25519( $x, $pk );
-
-    A( $a, $gf1, $x );
-    Z( $b, $gf1, $x );
+    $a = [];
+    $b = [];
+    $x = unpack25519( $pk );
+    A( $a, gf1(), $x );
+    Z( $b, gf1(), $x );
     inv25519( $b, $b );
     M( $a, $a, $b );
-
     return pack25519( $a );
 }
