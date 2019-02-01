@@ -26,7 +26,11 @@ if( !$verify )
 
 ## Requirements
 
-- [PHP](http://php.net) >=7.2
+- [PHP](http://php.net) >= 5.6
+
+## Recommended
+
+- [PHP](http://php.net) >= 7.2
 - [Sodium](http://php.net/manual/en/book.sodium.php)
 
 ## Installation

@@ -12,8 +12,10 @@
         }
     ],
     "require": {
-        "php": ">=7.2",
-        "ext-sodium": "*"
+        "php": ">=5.6"
+    },
+    "suggest": {
+        "ext-sodium": "Up to ~2000x faster sign/verify"
     },
     "require-dev": {
         "deemru/abcode": "1.0.*"

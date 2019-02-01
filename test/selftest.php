@@ -4,6 +4,9 @@ require __DIR__ . '/../vendor/autoload.php';
 use deemru\Curve25519;
 use deemru\ABCode;
 
+if( !function_exists( 'random_bytes' ) ){ function random_bytes( $size ){ $rnd = ''; while( $size-- ) $rnd .= chr( mt_rand() ); return $rnd; } }
+$sodium = function_exists( 'sodium_crypto_sign_detached' ) ? true : false;
+
 $base58 = ABCode::base58();
 
 $curve25519 = new Curve25519();
@@ -132,7 +135,9 @@ for( $i = 1; $i <= 3; $i++ )
     $t->pretest( "sign/verify #$i" );
     {
         $sig = $curve25519->sign( $msg, $privateKey );
-        $t->test( $curve25519->verify( $sig, $msg, $publicKey ) === true );
+        $sameR = isset( $R ) ? $R === substr( $sig, 0, 32 ) : false;
+        $R = substr( $sig, 0, 32 );
+        $t->test( $curve25519->verify( $sig, $msg, $publicKey ) === true && !$sameR );
     }
 }
 
@@ -173,6 +178,7 @@ for( $i = 1; $i <= 3; $i++ )
     }
 }
 
+if( $sodium )
 {
     $t->pretest( "12 signs" );
     $mt = microtime( true );
@@ -217,6 +223,10 @@ for( $i = 1; microtime( true ) - $mt < 13.37; $i++ )
 {
     flipsig_test( $t, $sig, $msg, $sodiumPublicKey, $curve25519, 'signature bits flip (php)' );
     flipkey_test( $t, $sig, $msg, $sodiumPublicKey, $curve25519, 'publickey bits flip (php)' );
+}
+
+if( $sodium )
+{
     flipsig_test( $t, $sigso, $msg, $sodiumPublicKey, $curve25519, 'signature bits flip (sodium)' );
     flipkey_test( $t, $sigso, $msg, $sodiumPublicKey, $curve25519, 'publickey bits flip (sodium)' );
 }

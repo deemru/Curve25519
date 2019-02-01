@@ -7,9 +7,31 @@ use function deemru\curve25519\sha512;
 use function deemru\curve25519\to_chr;
 use function deemru\curve25519\to_ord;
 use function deemru\curve25519\curve25519_to_ed25519;
+use function deemru\curve25519\ed25519_to_curve25519;
 use function deemru\curve25519\pack;
 use function deemru\curve25519\scalarbase;
 use function deemru\curve25519\sign_php;
+use function deemru\curve25519\verify_php;
+
+if( !function_exists( 'sodium_crypto_box_publickey_from_secretkey' ) )
+{
+    function sodium_crypto_box_publickey_from_secretkey( $key )
+    {
+        $edsk = to_ord( $key, 32 );
+        $edsk[0] &= 248;
+        $edsk[31] &= 127;
+        $edsk[31] |= 64;
+        return to_chr( ed25519_to_curve25519( pack( scalarbase( $edsk ) ) ), 32 );
+    }
+}
+
+if( !function_exists( 'sodium_crypto_sign_verify_detached' ) )
+{
+    function sodium_crypto_sign_verify_detached( $sig, $msg, $key )
+    {
+        return verify_php( $sig, $msg, $key );
+    }
+}
 
 class Curve25519
 {
@@ -78,6 +100,9 @@ class Curve25519
      */
     public function sign_sodium( $msg, $key )
     {
+        if( !function_exists( 'sodium_crypto_sign_detached' ) )
+            return $this->sign( $msg, $this->getSodiumPrivateKeyFromPrivateKey( $key ) );
+
         if( strlen( $key ) !== 32 )
             return false;
 
