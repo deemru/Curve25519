@@ -87,7 +87,7 @@ $t->pretest( 'verify (known)' );
     $t->test( $curve25519->verify( $sig, $msg, $publicKey ) === true );
 }
 
-function flipsig_test( $t, $sig, $msg, $publicKey, $curve25519, $text )
+function flipsig_test( $t, $sig, $msg, $publicKey, $curve25519, $text, $sodium = true )
 {
     $t->pretest( $text );
     $verify = false;
@@ -96,6 +96,8 @@ function flipsig_test( $t, $sig, $msg, $publicKey, $curve25519, $text )
         $c = ord( $sig[$i] );
         for( $j = 0; $j < 8; $j++ )
         {
+            if( !$sodium && mt_rand( 1, 3 ) > 1 )
+                continue;
             $ctest = $c ^ ( 1 << $j );
             $sig[$i] = chr( $ctest );
             $verify = $verify || $curve25519->verify( $sig, $msg, $publicKey );
@@ -221,7 +223,7 @@ for( $i = 1; microtime( true ) - $mt < 13.37; $i++ )
 }
 
 {
-    flipsig_test( $t, $sig, $msg, $sodiumPublicKey, $curve25519, 'signature bits flip (php)' );
+    flipsig_test( $t, $sig, $msg, $sodiumPublicKey, $curve25519, 'signature bits flip (php)', $sodium );
     flipkey_test( $t, $sig, $msg, $sodiumPublicKey, $curve25519, 'publickey bits flip (php)' );
 }
 
