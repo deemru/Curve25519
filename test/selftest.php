@@ -165,14 +165,18 @@ $t->pretest( "sign/verify (rseed) without define()" );
 
 define( 'IREALLYKNOWWHAT_RSEED_MEANS', null );
 
+unset( $R );
 for( $i = 1; $i <= 3; $i++ )
 {
     $t->pretest( "sign/verify (rseed) #$i" );
     {
         $msg .= $msg;
         $sig = $curve25519->sign( $msg, $privateKey, '123' );
+        
+        if( !isset( $R ) )
+            $R = $curve25519->sign( null, $privateKey, '123' );
 
-        $R_test = isset( $sig_saved ) ? substr( $sig, 0, 32 ) === substr( $sig_saved, 0, 32 ) : true;
+        $R_test = substr( $sig, 0, 32 ) === $R;
         $S_test = isset( $sig_saved ) ? substr( $sig, 32 ) !== substr( $sig_saved, 32 ) : true;
 
         $t->test( $curve25519->verify( $sig, $msg, $publicKey ) === true && $R_test && $S_test );

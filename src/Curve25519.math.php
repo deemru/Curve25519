@@ -318,9 +318,8 @@ function sign_php( $msg, $key, $sk, $rseed )
     $r = modL( to_ord( sha512( $rseed ), 64 ) );
     $R = pack( scalarbase( $r ) );
 
-    $S = array_fill( 0, 32, 0 );
-    if( isset( $rseed ) && !isset( $msg ) )
-        return array_merge( $R, $S );
+    if( !isset( $msg ) )
+        return $R;
 
     $rseed = to_chr( $R, 32 );
     for( $i = 0; $i < 32; $i++ )

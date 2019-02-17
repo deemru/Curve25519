@@ -83,6 +83,9 @@ class Curve25519
             }
         }
 
+        if( !isset( $msg ) )
+            return to_chr( sign_php( null, $key, $keypair, $rseed ), 32 );
+
         $bit = $keypair[63] & 128;
         $sig = sign_php( $msg, $key, $keypair, $rseed );
         $sig[63] |= $bit;
