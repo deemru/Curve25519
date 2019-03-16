@@ -456,7 +456,6 @@ function verify_php( $sig, $msg, $key )
 
     add( $p, $q );
     $t = pack( $p );
-    $tt = to_ord( $sig, 32 );
 
     if( crypto_verify_32( to_ord( $sig, 32 ), $t ) )
         return false;
