@@ -132,7 +132,7 @@ function flipkey_test( $t, $sig, $msg, $publicKey, $curve25519, $text )
     $t->test( false === $verify );
 }
 
-for( $i = 1; $i <= 3; $i++ )
+for( $i = 1; $i <= 12; $i++ )
 {
     $t->pretest( "sign/verify #$i" );
     {
@@ -149,7 +149,7 @@ $t->pretest( 'getSodiumPublicKeyFromPrivateKey' );
     $t->test( $sodiumPublicKey !== $base58->decode( 'EENPV1mRhUD9gSKbcWt84cqnfSGQP5LkCu5gMBfAanYH' ) );
 }
 
-for( $i = 1; $i <= 3; $i++ )
+for( $i = 1; $i <= 12; $i++ )
 {
     $t->pretest( "sign/verify (sodium) #$i" );
     {
@@ -166,7 +166,7 @@ $t->pretest( "sign/verify (rseed) without define()" );
 define( 'IREALLYKNOWWHAT_RSEED_MEANS', null );
 
 unset( $R );
-for( $i = 1; $i <= 3; $i++ )
+for( $i = 1; $i <= 12; $i++ )
 {
     $t->pretest( "sign/verify (rseed) #$i" );
     {
@@ -186,6 +186,7 @@ for( $i = 1; $i <= 3; $i++ )
 
 if( $sodium )
 {
+    $msg = random_bytes( 32 );
     $t->pretest( "12 signs" );
     $mt = microtime( true );
     for( $i = 1; $i <= 12; $i++ )
@@ -200,13 +201,21 @@ if( $sodium )
     $mt_sodium = microtime( true ) - $mt_sodium;
     $t->test( $sig !== false );
 
-    $x = intval( $mt / $mt_sodium ) . 'x';
-    $t->pretest( "sodium is $x faster" );
-    $t->test( $mt_sodium * 100 < $mt );
+    $x = intval( $mt / $mt_sodium );
+    if( defined( 'CURVE25519_SODIUM_SUPPORT' ) )
+    {
+        $t->pretest( 'CURVE25519_SODIUM_SUPPORT' );
+        $t->test( $x <= 1 );
+    }
+    else
+    {
+        $t->pretest( "sodium is {$x}x faster" );
+        $t->test( $mt_sodium * 100 < $mt );
+    }
 }
 
 $mt = microtime( true );
-for( $i = 1; microtime( true ) - $mt < 13.37; $i++ )
+for( $i = 1; microtime( true ) - $mt < ( defined( 'CURVE25519_SODIUM_SUPPORT' ) ? 1.337 : 13.37 ); $i++ )
 {
     $t->pretest( "sign/verify (complex) #$i" );
 

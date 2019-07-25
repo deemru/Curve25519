@@ -462,3 +462,26 @@ function verify_php( $sig, $msg, $key )
 
     return true;
 }
+
+function keypair( $keyseed, $sodium )
+{
+    if( defined( 'CURVE25519_SODIUM_SUPPORT' ) )
+    {
+        if( $sodium )
+            return substr( sodium_crypto_sign_seed_keypair( substr( sha512( $keyseed ), 0, 32 ) ), 0, 64 );
+        else
+            return substr( sodium_crypto_sign_seed_keypair( $keyseed ), 0, 64 );
+    }
+    if( function_exists( 'sodium_crypto_sign_seed_keypair' ) && $sodium )
+    {
+        return substr( sodium_crypto_sign_seed_keypair( $keyseed ), 0, 64 );
+    }
+
+    $edsk = to_ord( $sodium ? sha512( $keyseed ) : $keyseed, 32 );
+    $edsk[0] &= 248;
+    $edsk[31] &= 127;
+    $edsk[31] |= 64;
+
+    $edpk = pack( scalarbase( $edsk ) );
+    return $keyseed . to_chr( $edpk, 32 );
+}

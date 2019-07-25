@@ -12,6 +12,7 @@ use function deemru\curve25519\pack;
 use function deemru\curve25519\scalarbase;
 use function deemru\curve25519\sign_php;
 use function deemru\curve25519\verify_php;
+use function deemru\curve25519\keypair;
 
 if( !function_exists( 'sodium_crypto_box_publickey_from_secretkey' ) )
 {
@@ -31,6 +32,15 @@ if( !function_exists( 'sodium_crypto_sign_verify_detached' ) )
     {
         return verify_php( $sig, $msg, $key );
     }
+}
+
+if( function_exists( 'sodium_crypto_sign_seed_keypair' ) )
+{
+    $seed = hex2bin( '3030303030303030303030303030303030303030303030303030303030303030' );
+    $pubkey = hex2bin( '0a8907a1ec72d1b80373cd41e8e4eb5a6a25fdda4ef82be7b635a54700b42289' );
+    $pubkey_sodium = substr( sodium_crypto_sign_seed_keypair( $seed ), 32, 32 );
+    if( $pubkey === $pubkey_sodium )
+        define( 'CURVE25519_SODIUM_SUPPORT', true );
 }
 
 class Curve25519
@@ -62,20 +72,26 @@ class Curve25519
         if( isset( $rseed ) && !defined( 'IREALLYKNOWWHAT_RSEED_MEANS' ) )
             return false;
 
+        if( defined( 'CURVE25519_SODIUM_SUPPORT' ) && !isset( $rseed ) )
+        {
+            $keypair = keypair( $key, false );
+            $bit = ord( $keypair[63] ) & 128;
+            $sig = sodium_crypto_sign_detached( $msg, $keypair );
+            $sig[63] = chr( ord( $sig[63] ) | $bit );
+            return $sig;
+        }
+
         if( $this->caching && isset( $this->skey ) && $this->skey === $key )
         {
             $keypair = $this->skey_val;
         }
         else
         {
-            $edsk = to_ord( $key, 32 );
-            $edsk[0] &= 248;
-            $edsk[31] &= 127;
-            $edsk[31] |= 64;
+            $keypair = to_ord( keypair( $key, false ), 64 );
+            $keypair[0] &= 248;
+            $keypair[31] &= 127;
+            $keypair[31] |= 64;
 
-            $edpk = pack( scalarbase( $edsk ) );
-            $keypair = array_merge( $edsk, $edpk );
-            
             if( $this->caching )
             {
                 $this->skey = $key;
@@ -115,13 +131,7 @@ class Curve25519
         }
         else
         {
-            $edsk = to_ord( sha512( $key ), 32 );
-            $edsk[0] &= 248;
-            $edsk[31] &= 127;
-            $edsk[31] |= 64;
-
-            $edpk = pack( scalarbase( $edsk ) );
-            $keypair = $key . to_chr( $edpk, 32 );
+            $keypair = keypair( $key, true );
 
             if( $this->caching )
             {
