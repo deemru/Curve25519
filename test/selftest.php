@@ -132,16 +132,21 @@ function flipkey_test( $t, $sig, $msg, $publicKey, $curve25519, $text )
     $t->test( false === $verify );
 }
 
+$R = null;
+$sameR = 0;
 for( $i = 1; $i <= 12; $i++ )
 {
     $t->pretest( "sign/verify #$i" );
     {
         $sig = $curve25519->sign( $msg, $privateKey );
-        $sameR = isset( $R ) ? $R === substr( $sig, 0, 32 ) : false;
+        $sameR |= isset( $R ) ? $R === substr( $sig, 0, 32 ) : 0;
         $R = substr( $sig, 0, 32 );
-        $t->test( $curve25519->verify( $sig, $msg, $publicKey ) === true && !$sameR );
+        $t->test( $curve25519->verify( $sig, $msg, $publicKey ) === true );
     }
 }
+
+$t->pretest( "sign/verify (same R not used)" );
+$t->test( !$sameR );
 
 $t->pretest( 'getSodiumPublicKeyFromPrivateKey' );
 {
@@ -149,13 +154,27 @@ $t->pretest( 'getSodiumPublicKeyFromPrivateKey' );
     $t->test( $sodiumPublicKey !== $base58->decode( 'EENPV1mRhUD9gSKbcWt84cqnfSGQP5LkCu5gMBfAanYH' ) );
 }
 
+$R = null;
+$sameR = 0;
 for( $i = 1; $i <= 12; $i++ )
 {
     $t->pretest( "sign/verify (sodium) #$i" );
     {
         $sig = $curve25519->sign_sodium( $msg, $privateKey );
+        $sameR |= isset( $R ) ? $R === substr( $sig, 0, 32 ) : 0;
+        $R = substr( $sig, 0, 32 );
         $t->test( $curve25519->verify( $sig, $msg, $sodiumPublicKey ) === true );
     }
+}
+
+if( defined( 'CURVE25519_SODIUM_SUPPORT' ) )
+{
+    $t->pretest( "sign/verify (sodium with ED25519_NONDETERMINISTIC)" );
+    $t->test( !$sameR );
+}
+else if( $sameR )
+{
+    echo 'WARNING: sodium without ED25519_NONDETERMINISTIC' . PHP_EOL;
 }
 
 $t->pretest( "sign/verify (rseed) without define()" );
