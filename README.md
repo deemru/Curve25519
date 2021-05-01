@@ -1,6 +1,6 @@
 # Curve25519
 
-[![packagist](https://img.shields.io/packagist/v/deemru/curve25519.svg)](https://packagist.org/packages/deemru/curve25519) [![php-v](https://img.shields.io/packagist/php-v/deemru/curve25519.svg)](https://packagist.org/packages/deemru/curve25519)  [![travis](https://img.shields.io/travis/deemru/Curve25519.svg?label=travis)](https://travis-ci.org/deemru/Curve25519) [![codacy](https://img.shields.io/codacy/grade/ee0862d2598c47b6a8c8856d05fb0c37.svg?label=codacy)](https://app.codacy.com/project/deemru/Curve25519/dashboard) [![license](https://img.shields.io/packagist/l/deemru/curve25519.svg)](https://packagist.org/packages/deemru/curve25519)
+[![packagist](https://img.shields.io/packagist/v/deemru/curve25519.svg)](https://packagist.org/packages/deemru/curve25519) [![php-v](https://img.shields.io/packagist/php-v/deemru/curve25519.svg)](https://packagist.org/packages/deemru/curve25519)  [![travis](https://img.shields.io/travis/deemru/Curve25519.svg?label=travis)](https://travis-ci.org/deemru/Curve25519) [![codacy](https://img.shields.io/codacy/grade/49e6e148e477494da94320825c715dfd.svg?label=codacy)](https://app.codacy.com/gh/deemru/Curve25519/files) [![license](https://img.shields.io/packagist/l/deemru/curve25519.svg)](https://packagist.org/packages/deemru/curve25519)
 
 [Curve25519](https://github.com/deemru/Curve25519) implements the missing functionality of sign/verify on [elliptic curve 25519](https://en.wikipedia.org/wiki/Curve25519).
 
@@ -49,3 +49,4 @@ Require through Composer:
 
 - `sign_sodium` hashes private key internally by SHA-512
 - Beware of `rseed` functionality (for experts only)
+- Consider to use [ED25519_NO_SHA512SK sodium build](https://gist.github.com/deemru/145c3eb323bb3fb0f1cc4a72f5567640)
