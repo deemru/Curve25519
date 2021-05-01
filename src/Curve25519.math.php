@@ -463,16 +463,17 @@ function verify_php( $sig, $msg, $key )
     return true;
 }
 
-function keypair( $keyseed, $sodium )
+function keypair( $keyseed, $sodium, $CURVE25519_SODIUM_SUPPORT )
 {
-    if( defined( 'CURVE25519_SODIUM_SUPPORT' ) )
+    if( $CURVE25519_SODIUM_SUPPORT )
     {
         if( $sodium )
             return substr( sodium_crypto_sign_seed_keypair( substr( sha512( $keyseed ), 0, 32 ) ), 0, 64 );
         else
             return substr( sodium_crypto_sign_seed_keypair( $keyseed ), 0, 64 );
     }
-    if( function_exists( 'sodium_crypto_sign_seed_keypair' ) && $sodium )
+
+    if( $sodium && function_exists( 'sodium_crypto_sign_seed_keypair' ) )
     {
         return substr( sodium_crypto_sign_seed_keypair( $keyseed ), 0, 64 );
     }

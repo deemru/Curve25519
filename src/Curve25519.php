@@ -53,6 +53,8 @@ class Curve25519
     public function __construct( $caching = true )
     {
         $this->caching = $caching;
+        $this->sodium_crypto_sign_detached = function_exists( 'sodium_crypto_sign_detached' );
+        $this->CURVE25519_SODIUM_SUPPORT = defined( 'CURVE25519_SODIUM_SUPPORT' );
     }
 
     /**
@@ -72,9 +74,23 @@ class Curve25519
         if( isset( $rseed ) && !defined( 'IREALLYKNOWWHAT_RSEED_MEANS' ) )
             return false;
 
-        if( defined( 'CURVE25519_SODIUM_SUPPORT' ) && !isset( $rseed ) )
+        if( $this->CURVE25519_SODIUM_SUPPORT && !isset( $rseed ) )
         {
-            $keypair = keypair( $key, false );
+            if( $this->caching && isset( $this->cukey ) && $this->cukey === $key )
+            {
+                $keypair = $this->cukey_val;
+            }
+            else
+            {
+                $keypair = keypair( $key, false, $this->CURVE25519_SODIUM_SUPPORT );
+                
+                if( $this->caching )
+                {
+                    $this->cukey = $key;
+                    $this->cukey_val = $keypair;
+                }
+            }
+
             $bit = ord( $keypair[63] ) & 128;
             $sig = sodium_crypto_sign_detached( $msg, $keypair );
             $sig[63] = chr( ord( $sig[63] ) | $bit );
@@ -87,7 +103,7 @@ class Curve25519
         }
         else
         {
-            $keypair = to_ord( keypair( $key, false ), 64 );
+            $keypair = to_ord( keypair( $key, false, $this->CURVE25519_SODIUM_SUPPORT ), 64 );
             $keypair[0] &= 248;
             $keypair[31] &= 127;
             $keypair[31] |= 64;
@@ -119,7 +135,7 @@ class Curve25519
      */
     public function sign_sodium( $msg, $key )
     {
-        if( !function_exists( 'sodium_crypto_sign_detached' ) )
+        if( !$this->sodium_crypto_sign_detached )
             return $this->sign( $msg, $this->getSodiumPrivateKeyFromPrivateKey( $key ) );
 
         if( strlen( $key ) !== 32 )
@@ -131,7 +147,7 @@ class Curve25519
         }
         else
         {
-            $keypair = keypair( $key, true );
+            $keypair = keypair( $key, true, $this->CURVE25519_SODIUM_SUPPORT );
 
             if( $this->caching )
             {
