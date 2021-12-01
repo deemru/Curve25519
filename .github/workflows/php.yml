@@ -1,0 +1,31 @@
+name: PHP
+
+on: [push]
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        php-versions: ['5.6', '7.4', '8.0']
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ matrix.php-versions }}
+
+    - name: Validate composer.json and composer.lock
+      run: composer validate
+
+    - name: Composer install
+      run: composer install
+
+    - name: Composer test
+      run: composer run-script test --timeout=3600
