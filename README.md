@@ -1,6 +1,6 @@
 # Curve25519
 
-[![packagist](https://img.shields.io/packagist/v/deemru/curve25519.svg)](https://packagist.org/packages/deemru/curve25519) [![php-v](https://img.shields.io/packagist/php-v/deemru/curve25519.svg)](https://packagist.org/packages/deemru/curve25519)  [![travis](https://img.shields.io/travis/deemru/Curve25519.svg?label=travis)](https://travis-ci.org/deemru/Curve25519) [![codacy](https://img.shields.io/codacy/grade/49e6e148e477494da94320825c715dfd.svg?label=codacy)](https://app.codacy.com/gh/deemru/Curve25519/files) [![license](https://img.shields.io/packagist/l/deemru/curve25519.svg)](https://packagist.org/packages/deemru/curve25519)
+[![packagist](https://img.shields.io/packagist/v/deemru/curve25519.svg)](https://packagist.org/packages/deemru/curve25519) [![php-v](https://img.shields.io/packagist/php-v/deemru/curve25519.svg)](https://packagist.org/packages/deemru/curve25519)  [![GitHub](https://img.shields.io/github/actions/workflow/status/deemru/Curve25519/php.yml?label=github%20actions)](https://github.com/deemru/Curve25519/actions/workflows/php.yml)  [![codacy](https://img.shields.io/codacy/grade/49e6e148e477494da94320825c715dfd.svg?label=codacy)](https://app.codacy.com/gh/deemru/Curve25519/files) [![license](https://img.shields.io/packagist/l/deemru/curve25519.svg)](https://packagist.org/packages/deemru/curve25519)
 
 [Curve25519](https://github.com/deemru/Curve25519) implements the missing functionality of sign/verify on [elliptic curve 25519](https://en.wikipedia.org/wiki/Curve25519).
 

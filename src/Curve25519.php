@@ -45,6 +45,18 @@ if( function_exists( 'sodium_crypto_sign_seed_keypair' ) )
 
 class Curve25519
 {
+    private $caching;
+    private $sodium_crypto_sign_detached;
+    private $CURVE25519_SODIUM_SUPPORT;
+    private $cukey;
+    private $cukey_val;
+    private $skey;
+    private $skey_val;
+    private $sokey;
+    private $sokey_val;
+    private $pkey;
+    private $pkey_val;
+
     /**
      * Creates Curve25519 instance
      *
