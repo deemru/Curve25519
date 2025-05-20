@@ -97,7 +97,10 @@ function Z( &$o, $a, $b )
 
 function M( &$o, $a, $b )
 {
-    $t = array_fill( 0, 31, 0 );
+    static $z31 =
+        [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
+    $t = $z31;
 
     for( $i = 0; $i < 16; $i++ )
         for( $j = 0; $j < 16; $j++ )
@@ -191,10 +194,13 @@ function pack( $p )
 
 function scalarmult( $q, $s )
 {
-    $p = [ [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ],
+    static $sp =
+         [ [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ],
            [ 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ],
            [ 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ],
            [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ] ];
+
+    $p = $sp;
 
     for( $i = 255; $i >= 0; $i-- )
     {
@@ -283,37 +289,16 @@ function to_chr( $a, $n )
     return $chr;
 }
 
-function rnd( $size )
-{
-    static $rndfn;
-
-    if( !isset( $rndfn ) )
-    {
-        if( function_exists( 'random_bytes' ) )
-            $rndfn = 2;
-        else if( function_exists( 'mcrypt_create_iv' ) )
-            $rndfn = 1;
-        else
-            $rndfn = 0;
-    }
-    
-    if( $rndfn === 2 )
-        return random_bytes( $size );
-    if( $rndfn === 1 )
-        return mcrypt_create_iv( $size );
-
-    $rnd = '';
-    while( $size-- )
-        $rnd .= chr( mt_rand() );
-    return $rnd;
-}
-
 function sign_php( $msg, $key, $sk, $rseed )
 {
+    static $prolog;
+    if( !isset( $prolog ) )
+        $prolog = str_pad( chr( 254 ), 32, chr( 255 ) );
+
     if( isset( $rseed ) )
-        $rseed = str_pad( chr( 254 ), 32, chr( 255 ) ) . $key . sha512( $rseed );
+        $rseed = $prolog . $key . $rseed;
     else
-        $rseed = str_pad( chr( 254 ), 32, chr( 255 ) ) . $key . $msg . rnd( 64 );
+        $rseed = $prolog . $key . $msg;
 
     $r = modL( to_ord( sha512( $rseed ), 64 ) );
     $R = pack( scalarbase( $r ) );
@@ -326,7 +311,10 @@ function sign_php( $msg, $key, $sk, $rseed )
         $rseed .= chr( $sk[32 + $i] );
     $h = modL( to_ord( sha512( $rseed . $msg ), 64 ) );
 
-    $x = array_merge( $r, array_fill( 0, 32, 0 ) );
+    static $z32 =
+        [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+          0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
+    $x = array_merge( $r, $z32 );
     for( $i = 0; $i < 32; $i++ )
         for( $j = 0; $j < 32; $j++ )
             $x[$i + $j] += $h[$i] * $sk[$j];
@@ -335,7 +323,11 @@ function sign_php( $msg, $key, $sk, $rseed )
     return array_merge( $R, $S );
 }
 
-function gf1(){ return [ 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]; }
+function gf1()
+{
+    static $gf1 = [ 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
+    return $gf1;
+}
 
 function curve25519_to_ed25519( $pk )
 {
@@ -435,8 +427,9 @@ function unpackneg( &$r, $p )
     if( neq25519( $chk, $num ) )
         return -1;
 
+    static $gf0 = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
     if( par25519( $r[0] ) === ( $p[31] >> 7 ) )
-        Z( $r[0], [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ], $r[0] );
+        Z( $r[0], $gf0, $r[0] );
 
     M( $r[3], $r[0], $r[1] );
     return 0;

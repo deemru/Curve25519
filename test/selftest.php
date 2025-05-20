@@ -146,8 +146,8 @@ for( $i = 1; $i <= 12; $i++ )
     }
 }
 
-$t->pretest( "sign/verify (same R not used)" );
-$t->test( !$sameR );
+$t->pretest( "sign/verify (DETERMINISTIC)" );
+$t->test( $sameR === 1 );
 
 $t->pretest( 'getSodiumPublicKeyFromPrivateKey' );
 {
@@ -168,15 +168,8 @@ for( $i = 1; $i <= 12; $i++ )
     }
 }
 
-if( defined( 'CURVE25519_SODIUM_SUPPORT' ) )
-{
-    $t->pretest( "sign/verify (sodium with ED25519_NONDETERMINISTIC)" );
-    $t->test( !$sameR );
-}
-else if( $sameR )
-{
-    echo 'WARNING: sodium without ED25519_NONDETERMINISTIC' . PHP_EOL;
-}
+$t->pretest( "sign/verify (sodium) (DETERMINISTIC)" );
+$t->test( $sameR === 1 );
 
 $t->pretest( "sign/verify (rseed) without define()" );
 {
